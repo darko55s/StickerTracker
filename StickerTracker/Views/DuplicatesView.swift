@@ -5,6 +5,7 @@ struct DuplicatesView: View {
     @Query(sort: \Team.sortOrder) private var teams: [Team]
     @Query private var stickers: [Sticker]  // drives reactivity when duplicateCount changes
     @State private var navigateToAdd = false
+    @State private var searchText = ""
 
     private var teamsWithDuplicates: [Team] {
         teams.filter { $0.stickers.contains(where: { $0.duplicateCount > 0 }) }
@@ -13,7 +14,9 @@ struct DuplicatesView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if teamsWithDuplicates.isEmpty {
+                if !searchText.isEmpty {
+                    DuplicateSearchResultsView(teams: teams, searchText: searchText)
+                } else if teamsWithDuplicates.isEmpty {
                     ContentUnavailableView(
                         "No Duplicates",
                         systemImage: "doc.on.doc",
@@ -42,6 +45,7 @@ struct DuplicatesView: View {
                 }
             }
             .navigationTitle("Duplicates")
+            .searchable(text: $searchText, prompt: "Team name, code or sticker…")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Add") { navigateToAdd = true }
