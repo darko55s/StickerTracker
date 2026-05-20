@@ -4,7 +4,7 @@ import SwiftData
 struct AddDuplicateView: View {
     @Query(sort: \Team.sortOrder) private var teams: [Team]
     @State private var selectedTeam: Team?
-    @State private var selectedNumber: Int?
+    @State private var selectedNumbers: Set<Int> = []
 
     private let teamColumns = [GridItem(.adaptive(minimum: 72), spacing: 8)]
     private let numberColumns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 5)
@@ -25,7 +25,7 @@ struct AddDuplicateView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Add") { addDuplicate() }
                     .fontWeight(.semibold)
-                    .disabled(selectedTeam == nil || selectedNumber == nil)
+                    .disabled(selectedTeam == nil || selectedNumbers.isEmpty)
             }
         }
     }
@@ -42,7 +42,7 @@ struct AddDuplicateView: View {
                         } else {
                             selectedTeam = team
                         }
-                        selectedNumber = nil
+                        selectedNumbers = []
                     } label: {
                         TeamChip(team: team, isSelected: selectedTeam === team)
                     }
@@ -59,12 +59,16 @@ struct AddDuplicateView: View {
             LazyVGrid(columns: numberColumns, spacing: 8) {
                 ForEach(1...(selectedTeam?.totalCount ?? 20), id: \.self) { n in
                     Button {
-                        selectedNumber = selectedNumber == n ? nil : n
+                        if selectedNumbers.contains(n) {
+                            selectedNumbers.remove(n)
+                        } else {
+                            selectedNumbers.insert(n)
+                        }
                     } label: {
                         DuplicateNumberTile(
                             number: n,
                             count: duplicateCount(for: n),
-                            isSelected: selectedNumber == n
+                            isSelected: selectedNumbers.contains(n)
                         )
                     }
                     .buttonStyle(.plain)
@@ -78,11 +82,13 @@ struct AddDuplicateView: View {
     }
 
     private func addDuplicate() {
-        guard let team = selectedTeam, let number = selectedNumber else { return }
-        if let sticker = team.stickers.first(where: { $0.number == number }) {
-            sticker.duplicateCount += 1
+        guard let team = selectedTeam, !selectedNumbers.isEmpty else { return }
+        for number in selectedNumbers {
+            if let sticker = team.stickers.first(where: { $0.number == number }) {
+                sticker.duplicateCount += 1
+            }
         }
-        selectedNumber = nil
+        selectedNumbers = []
     }
 }
 

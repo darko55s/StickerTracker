@@ -3,6 +3,7 @@ import SwiftData
 
 struct DuplicatesView: View {
     @Query(sort: \Team.sortOrder) private var teams: [Team]
+    @Query private var stickers: [Sticker]  // drives reactivity when duplicateCount changes
     @State private var navigateToAdd = false
 
     private var teamsWithDuplicates: [Team] {
