@@ -6,8 +6,8 @@ struct AddDuplicateView: View {
     @State private var selectedTeam: Team?
     @State private var selectedNumbers: Set<Int> = []
 
-    private let teamColumns = [GridItem(.adaptive(minimum: 72), spacing: 8)]
-    private let numberColumns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 5)
+    private let teamColumns = [GridItem(.adaptive(minimum: 96), spacing: 10)]
+    private let numberColumns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
 
     var body: some View {
         ScrollView {
@@ -98,14 +98,14 @@ private struct TeamChip: View {
 
     var body: some View {
         Text("\(team.flagEmoji) \(team.code)")
-            .font(.caption.weight(.medium))
+            .font(.body.weight(.medium))
             .lineLimit(1)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 10)
             .frame(maxWidth: .infinity)
             .background(isSelected ? Color.blue : Color(.systemGray6))
             .foregroundStyle(isSelected ? .white : .primary)
-            .clipShape(.rect(cornerRadius: 8))
+            .clipShape(.rect(cornerRadius: 10))
     }
 }
 
@@ -117,23 +117,25 @@ private struct DuplicateNumberTile: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             Text("\(number)")
-                .font(.body.weight(.medium))
+                .font(.title3.weight(.medium))
+                .minimumScaleFactor(0.5)
+                .lineLimit(1)
                 .frame(maxWidth: .infinity)
                 .aspectRatio(1, contentMode: .fit)
                 .background(isSelected ? Color.blue : Color(.systemGray6))
                 .foregroundStyle(isSelected ? .white : .primary)
-                .clipShape(.rect(cornerRadius: 8))
+                .clipShape(.rect(cornerRadius: 10))
 
             if count > 0 {
                 Text("\(count)")
-                    .font(.caption2.weight(.bold))
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(.white)
-                    .padding(4)
+                    .padding(5)
                     .background(Color.orange)
                     .clipShape(Circle())
-                    .offset(x: 5, y: -5)
+                    .offset(x: 6, y: -6)
             }
         }
-        .padding(3)
+        .padding(4)
     }
 }
