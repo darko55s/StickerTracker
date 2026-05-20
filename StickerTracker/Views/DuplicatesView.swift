@@ -11,6 +11,19 @@ struct DuplicatesView: View {
         teams.filter { $0.stickers.contains(where: { $0.duplicateCount > 0 }) }
     }
 
+    private var duplicatesShareText: String {
+        teamsWithDuplicates
+            .compactMap { team -> String? in
+                let entries = team.stickers
+                    .filter { $0.duplicateCount > 0 }
+                    .sorted { $0.number < $1.number }
+                    .map { $0.duplicateCount > 1 ? "\($0.number)×\($0.duplicateCount)" : "\($0.number)" }
+                    .joined(separator: ", ")
+                return "\(team.flagEmoji) \(team.code): \(entries)"
+            }
+            .joined(separator: "\n")
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -47,6 +60,12 @@ struct DuplicatesView: View {
             .navigationTitle("Duplicates")
             .searchable(text: $searchText, prompt: "Team name, code or sticker…")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    ShareLink(item: duplicatesShareText) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .disabled(duplicatesShareText.isEmpty)
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Add") { navigateToAdd = true }
                         .fontWeight(.semibold)
