@@ -51,6 +51,14 @@ struct DuplicatesView: View {
                                             .foregroundStyle(.secondary)
                                             .monospacedDigit()
                                     }
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button {
+                                            sticker.duplicateCount -= 1
+                                        } label: {
+                                            Label("Remove One", systemImage: "minus.circle")
+                                        }
+                                        .tint(.red)
+                                    }
                                 }
                             }
                         }
