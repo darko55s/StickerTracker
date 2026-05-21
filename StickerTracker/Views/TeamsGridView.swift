@@ -23,7 +23,7 @@ struct TeamsGridView: View {
                     .map { String($0.number) }
                     .joined(separator: " ")
                 guard !missing.isEmpty else { return nil }
-                return "\(team.code): \(missing)"
+                return "\(team.flagEmoji) \(team.code): \(missing)"
             }
             .joined(separator: "\n\n")
     }
