@@ -23,6 +23,10 @@ struct ContentView: View {
                 .tabItem {
                     Label("Stats", systemImage: "chart.bar")
                 }
+            TradeView()
+                .tabItem {
+                    Label("Trade", systemImage: "arrow.left.arrow.right")
+                }
         }
     }
 }

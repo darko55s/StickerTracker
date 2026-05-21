@@ -1,0 +1,162 @@
+import SwiftUI
+import SwiftData
+
+struct TradeView: View {
+    @Query(sort: \Team.sortOrder) private var teams: [Team]
+    @State private var pastedText = ""
+
+    private var parsedStickers: [String: Set<Int>] { parseInput(pastedText) }
+
+    private var canGive: [(team: Team, numbers: [Int])] {
+        teams.compactMap { team in
+            guard let friendNeeds = parsedStickers[team.code] else { return nil }
+            let numbers = team.stickers
+                .filter { friendNeeds.contains($0.number) && $0.duplicateCount > 0 }
+                .map(\.number).sorted()
+            return numbers.isEmpty ? nil : (team, numbers)
+        }
+    }
+
+    private var canReceive: [(team: Team, numbers: [Int])] {
+        teams.compactMap { team in
+            guard let friendHas = parsedStickers[team.code] else { return nil }
+            let numbers = team.stickers
+                .filter { friendHas.contains($0.number) && !$0.isCollected }
+                .map(\.number).sorted()
+            return numbers.isEmpty ? nil : (team, numbers)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    pasteSection
+                    if !pastedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        if canGive.isEmpty && canReceive.isEmpty {
+                            ContentUnavailableView(
+                                "No matches",
+                                systemImage: "arrow.left.arrow.right",
+                                description: Text("No stickers to trade with this list.")
+                            )
+                            .padding(.top, 32)
+                        } else {
+                            if !canGive.isEmpty {
+                                TradeSection(title: "You can give", items: canGive, color: .green)
+                            }
+                            if !canReceive.isEmpty {
+                                TradeSection(title: "You can get", items: canReceive, color: .blue)
+                            }
+                        }
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Trade")
+        }
+    }
+
+    private var pasteSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Paste friend's missing list")
+                    .font(.headline)
+                Spacer()
+                if !pastedText.isEmpty {
+                    Button("Clear") { pastedText = "" }
+                        .font(.subheadline)
+                }
+            }
+            ZStack(alignment: .topLeading) {
+                if pastedText.isEmpty {
+                    Text("e.g. 🇺🇸 USA: 1 2 3\n🇧🇷 BRA 5 7 9\nPAN: 1(1x), 20(2x)")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .padding(.top, 12)
+                        .padding(.leading, 5)
+                        .allowsHitTesting(false)
+                }
+                TextEditor(text: $pastedText)
+                    .frame(minHeight: 120)
+                    .scrollContentBackground(.hidden)
+            }
+            .padding(8)
+            .background(Color(.systemGray6))
+            .clipShape(.rect(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(Color(.systemGray4), lineWidth: 1)
+            )
+        }
+    }
+
+    // Handles formats:
+    // "🇺🇸 USA: 1 2 3", "USA: 1, 2, 3", "USA 1 2 3", "usa:1,2,3"
+    // "PAN: 1(1x), 20(2x)" — number(countx) means sticker held multiple times
+    private func parseInput(_ text: String) -> [String: Set<Int>] {
+        // Matches "5(2x)" style — capture the sticker number before the paren
+        let multiplierPattern = /(\d+)\(\d+x\)/
+        var result: [String: Set<Int>] = [:]
+        for line in text.components(separatedBy: .newlines) {
+            let upper = line.uppercased()
+            guard let team = teams.first(where: { upper.contains($0.code) }),
+                  let range = upper.range(of: team.code) else { continue }
+            var tail = String(upper[range.upperBound...])
+            let validNumbers = Set(team.stickers.map(\.number))
+            var numbers = Set<Int>()
+            // Extract "NUMBER(Nx)" patterns first so the inner count digit isn't parsed as a sticker
+            for match in tail.matches(of: multiplierPattern) {
+                if let n = Int(match.output.1), validNumbers.contains(n) {
+                    numbers.insert(n)
+                }
+            }
+            tail = tail.replacing(multiplierPattern, with: "")
+            // Parse remaining plain numbers
+            numbers.formUnion(
+                tail.components(separatedBy: CharacterSet.decimalDigits.inverted)
+                    .compactMap(Int.init)
+                    .filter { validNumbers.contains($0) }
+            )
+            guard !numbers.isEmpty else { continue }
+            result[team.code, default: []].formUnion(numbers)
+        }
+        return result
+    }
+}
+
+private struct TradeSection: View {
+    let title: String
+    let items: [(team: Team, numbers: [Int])]
+    let color: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.headline)
+            ForEach(items, id: \.team.id) { item in
+                HStack(alignment: .top, spacing: 10) {
+                    Text(item.team.flagEmoji)
+                        .font(.title3)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.team.code)
+                            .font(.subheadline.weight(.semibold))
+                        Text(item.numbers.map(String.init).joined(separator: "  "))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Text("\(item.numbers.count)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(color)
+                }
+            }
+        }
+        .padding()
+        .background(color.opacity(0.08))
+        .clipShape(.rect(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(color.opacity(0.3), lineWidth: 1)
+        )
+    }
+}
