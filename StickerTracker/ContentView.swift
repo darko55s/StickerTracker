@@ -19,6 +19,10 @@ struct ContentView: View {
                 .tabItem {
                     Label("Duplicates", systemImage: "doc.on.doc")
                 }
+            StatsView()
+                .tabItem {
+                    Label("Stats", systemImage: "chart.bar")
+                }
         }
     }
 }
