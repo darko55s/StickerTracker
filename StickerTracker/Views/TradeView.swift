@@ -4,6 +4,7 @@ import SwiftData
 struct TradeView: View {
     @Query(sort: \Team.sortOrder) private var teams: [Team]
     @State private var pastedText = ""
+    @FocusState private var isEditing: Bool
 
     private var parsedStickers: [String: Set<Int>] { parseInput(pastedText) }
 
@@ -53,6 +54,13 @@ struct TradeView: View {
                 .padding()
             }
             .navigationTitle("Trade")
+            .onTapGesture { isEditing = false }
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { isEditing = false }
+                }
+            }
         }
     }
 
@@ -79,6 +87,7 @@ struct TradeView: View {
                 TextEditor(text: $pastedText)
                     .frame(minHeight: 120)
                     .scrollContentBackground(.hidden)
+                    .focused($isEditing)
             }
             .padding(8)
             .background(Color(.systemGray6))
