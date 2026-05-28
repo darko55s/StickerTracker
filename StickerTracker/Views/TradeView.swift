@@ -1,9 +1,15 @@
 import SwiftUI
 import SwiftData
 
+private enum TradeMode: String, CaseIterable {
+    case friendMissing = "Their missing"
+    case friendDuplicates = "Their duplicates"
+}
+
 struct TradeView: View {
     @Query(sort: \Team.sortOrder) private var teams: [Team]
     @State private var pastedText = ""
+    @State private var tradeMode: TradeMode = .friendMissing
     @FocusState private var isEditing: Bool
 
     private var parsedStickers: [String: Set<Int>] { parseInput(pastedText) }
@@ -34,7 +40,8 @@ struct TradeView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     pasteSection
                     if !pastedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        if canGive.isEmpty && canReceive.isEmpty {
+                        let results = tradeMode == .friendMissing ? canGive : canReceive
+                        if results.isEmpty {
                             ContentUnavailableView(
                                 "No matches",
                                 systemImage: "arrow.left.arrow.right",
@@ -42,12 +49,9 @@ struct TradeView: View {
                             )
                             .padding(.top, 32)
                         } else {
-                            if !canGive.isEmpty {
-                                TradeSection(title: "You can give", items: canGive, color: .green)
-                            }
-                            if !canReceive.isEmpty {
-                                TradeSection(title: "You can get", items: canReceive, color: .blue)
-                            }
+                            let title = tradeMode == .friendMissing ? "You can give" : "You can get"
+                            let color: Color = tradeMode == .friendMissing ? .green : .blue
+                            TradeSection(title: title, items: results, color: color)
                         }
                     }
                 }
@@ -66,8 +70,16 @@ struct TradeView: View {
 
     private var pasteSection: some View {
         VStack(alignment: .leading, spacing: 8) {
+            Picker("Mode", selection: $tradeMode) {
+                ForEach(TradeMode.allCases, id: \.self) { mode in
+                    Text(mode.rawValue).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: tradeMode) { pastedText = "" }
+
             HStack {
-                Text("Paste friend's missing list")
+                Text(tradeMode == .friendMissing ? "Paste friend's missing list" : "Paste friend's duplicate list")
                     .font(.headline)
                 Spacer()
                 if !pastedText.isEmpty {

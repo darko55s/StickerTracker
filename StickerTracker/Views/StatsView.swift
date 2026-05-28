@@ -17,17 +17,7 @@ struct StatsView: View {
     private var sortedTeams: [Team] {
         teams.sorted { $0.progress > $1.progress }
     }
-    private var topDuplicates: [(sticker: Sticker, team: Team)] {
-        Array(
-            teams.flatMap { team in
-                team.stickers
-                    .filter { $0.duplicateCount > 0 }
-                    .map { (sticker: $0, team: team) }
-            }
-            .sorted { $0.sticker.duplicateCount > $1.sticker.duplicateCount }
-            .prefix(10)
-        )
-    }
+    @State private var isChartExpanded = false
 
     var body: some View {
         NavigationStack {
@@ -36,9 +26,6 @@ struct StatsView: View {
                     summaryCards
                     overallProgressCard
                     teamProgressChart
-                    if !topDuplicates.isEmpty {
-                        duplicatesCard
-                    }
                 }
                 .padding()
             }
@@ -74,54 +61,58 @@ struct StatsView: View {
 
     private var teamProgressChart: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("By Team")
-                .font(.headline)
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) { isChartExpanded.toggle() }
+            } label: {
+                HStack {
+                    Text("By Team")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(isChartExpanded ? 90 : 0))
+                }
                 .padding(.horizontal)
+            }
 
-            Chart {
-                ForEach(sortedTeams) { team in
-                    BarMark(
-                        x: .value("Progress", team.progress),
-                        y: .value("Team", "\(team.flagEmoji) \(team.code)")
-                    )
-                    .foregroundStyle(team.progress == 1.0 ? Color.green : Color.blue)
+            if isChartExpanded {
+                Chart {
+                    ForEach(sortedTeams) { team in
+                        BarMark(
+                            x: .value("Progress", team.progress),
+                            y: .value("Team", "\(team.flagEmoji) \(team.code)  \(team.collectedCount)/\(team.totalCount)")
+                        )
+                        .foregroundStyle(team.progress == 1.0 ? Color.green : Color.blue)
+                    }
                 }
-            }
-            .chartXScale(domain: 0...1)
-            .chartXAxis {
-                AxisMarks(values: [0, 0.5, 1.0]) {
-                    AxisGridLine()
-                    AxisValueLabel(format: FloatingPointFormatStyle<Double>.Percent().precision(.fractionLength(0)))
+                .chartXScale(domain: 0...1)
+                .chartXAxis {
+                    AxisMarks(values: [0, 0.5, 1.0]) {
+                        AxisGridLine()
+                        AxisValueLabel(format: FloatingPointFormatStyle<Double>.Percent().precision(.fractionLength(0)))
+                    }
                 }
+                .chartYAxis {
+                    AxisMarks { value in
+                        AxisValueLabel {
+                            if let label = value.as(String.self) {
+                                Text(label).font(.system(size: 15))
+                            }
+                        }
+                    }
+                }
+                .frame(height: CGFloat(teams.count) * 36)
+                .padding(.horizontal)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
-            .frame(height: CGFloat(teams.count) * 22)
-            .padding(.horizontal)
         }
         .padding(.vertical)
         .background(Color(.systemGray6))
         .clipShape(.rect(cornerRadius: 12))
     }
 
-    private var duplicatesCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Top Duplicates")
-                .font(.headline)
-            ForEach(topDuplicates, id: \.sticker.id) { item in
-                HStack {
-                    Text(item.team.flagEmoji)
-                    Text("\(item.team.code) #\(item.sticker.number)")
-                    Spacer()
-                    Text("\(item.sticker.duplicateCount)×")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.orange)
-                }
-                .font(.subheadline)
-            }
-        }
-        .padding()
-        .background(Color(.systemGray6))
-        .clipShape(.rect(cornerRadius: 12))
-    }
 }
 
 private struct StatCard: View {
