@@ -5,62 +5,92 @@ struct AddDuplicateView: View {
     @Query(sort: \Team.sortOrder) private var teams: [Team]
     @State private var selectedTeam: Team?
     @State private var selectedNumbers: Set<Int> = []
+    @State private var teamSearch = ""
 
-    private let teamColumns = [GridItem(.adaptive(minimum: 96), spacing: 10)]
-    private let numberColumns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
+    private var filteredTeams: [Team] {
+        let withStickers = teams.filter { $0.stickers.contains(where: \.isCollected) }
+        guard !teamSearch.isEmpty else { return withStickers }
+        let query = teamSearch.uppercased()
+        return withStickers.filter { $0.code.contains(query) || $0.name.uppercased().contains(query) }
+    }
+
+    private let numberColumns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 5)
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                teamSection
-                if selectedTeam != nil {
-                    numberSection
-                }
+        VStack(alignment: .leading, spacing: 0) {
+            teamStrip
+            Divider()
+            if let team = selectedTeam {
+                numberGrid(for: team)
+            } else {
+                Spacer()
+                ContentUnavailableView(
+                    "Select a Team",
+                    systemImage: "person.3",
+                    description: Text("Choose a team above to see your collected stickers.")
+                )
+                Spacer()
             }
-            .padding()
         }
         .navigationTitle("Add Duplicate")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Add") { addDuplicate() }
+                let count = selectedNumbers.count
+                Button(count > 0 ? "Add (\(count))" : "Add") { addDuplicate() }
                     .fontWeight(.semibold)
                     .disabled(selectedTeam == nil || selectedNumbers.isEmpty)
             }
         }
     }
 
-    private var teamSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Team")
-                .font(.headline)
-            LazyVGrid(columns: teamColumns, spacing: 8) {
-                ForEach(teams) { team in
-                    Button {
-                        if selectedTeam === team {
-                            selectedTeam = nil
-                        } else {
-                            selectedTeam = team
-                        }
-                        selectedNumbers = []
-                    } label: {
-                        TeamChip(team: team, isSelected: selectedTeam === team)
+    private var teamStrip: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search teams…", text: $teamSearch)
+                    .autocorrectionDisabled()
+                if !teamSearch.isEmpty {
+                    Button { teamSearch = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
                     }
-                    .buttonStyle(.plain)
                 }
+            }
+            .padding(8)
+            .background(Color(.systemGray6))
+            .clipShape(.rect(cornerRadius: 10))
+            .padding(.horizontal)
+            .padding(.top, 10)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(filteredTeams) { team in
+                        Button {
+                            if selectedTeam === team {
+                                selectedTeam = nil
+                            } else {
+                                selectedTeam = team
+                            }
+                            selectedNumbers = []
+                        } label: {
+                            TeamChip(team: team, isSelected: selectedTeam === team)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 10)
             }
         }
     }
 
-    private var numberSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Sticker")
-                .font(.headline)
+    private func numberGrid(for team: Team) -> some View {
+        let collectedNumbers = team.stickers.filter(\.isCollected).map(\.number).sorted()
+        return ScrollView {
             LazyVGrid(columns: numberColumns, spacing: 8) {
-                ForEach(
-                    selectedTeam?.stickers.filter(\.isCollected).map(\.number).sorted() ?? [],
-                    id: \.self
-                ) { n in
+                ForEach(collectedNumbers, id: \.self) { n in
                     Button {
                         if selectedNumbers.contains(n) {
                             selectedNumbers.remove(n)
@@ -70,18 +100,19 @@ struct AddDuplicateView: View {
                     } label: {
                         DuplicateNumberTile(
                             number: n,
-                            count: duplicateCount(for: n),
+                            count: duplicateCount(for: n, in: team),
                             isSelected: selectedNumbers.contains(n)
                         )
                     }
                     .buttonStyle(.plain)
                 }
             }
+            .padding()
         }
     }
 
-    private func duplicateCount(for number: Int) -> Int {
-        selectedTeam?.stickers.first(where: { $0.number == number })?.duplicateCount ?? 0
+    private func duplicateCount(for number: Int, in team: Team) -> Int {
+        team.stickers.first(where: { $0.number == number })?.duplicateCount ?? 0
     }
 
     private func addDuplicate() {
@@ -103,9 +134,8 @@ private struct TeamChip: View {
         Text("\(team.flagEmoji) \(team.code)")
             .font(.body.weight(.medium))
             .lineLimit(1)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
             .background(isSelected ? Color.blue : Color(.systemGray6))
             .foregroundStyle(isSelected ? .white : .primary)
             .clipShape(.rect(cornerRadius: 10))
@@ -120,25 +150,21 @@ private struct DuplicateNumberTile: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             Text("\(number)")
-                .font(.title3.weight(.medium))
-                .minimumScaleFactor(0.5)
-                .lineLimit(1)
-                .frame(maxWidth: .infinity)
-                .aspectRatio(1, contentMode: .fit)
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .frame(maxWidth: .infinity, minHeight: 44)
                 .background(isSelected ? Color.blue : Color(.systemGray6))
                 .foregroundStyle(isSelected ? .white : .primary)
-                .clipShape(.rect(cornerRadius: 10))
+                .clipShape(.rect(cornerRadius: 8))
 
             if count > 0 {
                 Text("\(count)")
-                    .font(.caption.weight(.bold))
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.white)
-                    .padding(5)
+                    .padding(4)
                     .background(Color.orange)
                     .clipShape(Circle())
                     .offset(x: 6, y: -6)
             }
         }
-        .padding(4)
     }
 }
