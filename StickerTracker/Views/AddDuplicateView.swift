@@ -57,7 +57,10 @@ struct AddDuplicateView: View {
             Text("Sticker")
                 .font(.headline)
             LazyVGrid(columns: numberColumns, spacing: 8) {
-                ForEach(1...(selectedTeam?.totalCount ?? 20), id: \.self) { n in
+                ForEach(
+                    selectedTeam?.stickers.filter(\.isCollected).map(\.number).sorted() ?? [],
+                    id: \.self
+                ) { n in
                     Button {
                         if selectedNumbers.contains(n) {
                             selectedNumbers.remove(n)
