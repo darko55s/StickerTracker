@@ -9,6 +9,8 @@ struct DuplicatesView: View {
     @State private var isSelecting = false
     @State private var selectedIDs = Set<Sticker.ID>()
 
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 5)
+
     private var teamsWithDuplicates: [Team] {
         teams.filter { $0.stickers.contains(where: { $0.duplicateCount > 0 }) }
     }
@@ -48,35 +50,29 @@ struct DuplicatesView: View {
                         description: Text("Tap Add to record your first duplicate.")
                     )
                 } else {
-                    List(selection: $selectedIDs) {
-                        ForEach(teamsWithDuplicates) { team in
-                            Section("\(team.flagEmoji) \(team.name)") {
-                                ForEach(
-                                    team.stickers
-                                        .filter { $0.duplicateCount > 0 }
-                                        .sorted { $0.number < $1.number }
-                                ) { sticker in
-                                    HStack {
-                                        Text("Sticker \(sticker.number)")
-                                        Spacer()
-                                        Text("×\(sticker.duplicateCount)")
-                                            .foregroundStyle(.secondary)
-                                            .monospacedDigit()
-                                    }
-                                    .tag(sticker.id)
-                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                        Button {
-                                            sticker.duplicateCount -= 1
-                                        } label: {
-                                            Label("Remove One", systemImage: "minus.circle")
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 24) {
+                            ForEach(teamsWithDuplicates) { team in
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("\(team.flagEmoji) \(team.name)")
+                                        .font(.headline)
+                                        .padding(.horizontal)
+
+                                    LazyVGrid(columns: columns, spacing: 8) {
+                                        ForEach(
+                                            team.stickers
+                                                .filter { $0.duplicateCount > 0 }
+                                                .sorted { $0.number < $1.number }
+                                        ) { sticker in
+                                            duplicateTile(sticker: sticker)
                                         }
-                                        .tint(.red)
                                     }
+                                    .padding(.horizontal)
                                 }
                             }
                         }
+                        .padding(.vertical)
                     }
-                    .environment(\.editMode, .constant(isSelecting ? .active : .inactive))
                 }
             }
             .navigationTitle("Duplicates")
@@ -110,6 +106,32 @@ struct DuplicatesView: View {
             }
             .navigationDestination(isPresented: $navigateToAdd) {
                 AddDuplicateView()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func duplicateTile(sticker: Sticker) -> some View {
+        let isSelected = selectedIDs.contains(sticker.id)
+        ZStack {
+            StickerTile(sticker: sticker)
+                .allowsHitTesting(false)
+
+            if isSelecting {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isSelected ? Color.blue.opacity(0.25) : Color.clear)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .strokeBorder(isSelected ? Color.blue : Color.clear, lineWidth: 2)
+                    )
+                    .contentShape(RoundedRectangle(cornerRadius: 8))
+                    .onTapGesture {
+                        if isSelected {
+                            selectedIDs.remove(sticker.id)
+                        } else {
+                            selectedIDs.insert(sticker.id)
+                        }
+                    }
             }
         }
     }
