@@ -31,7 +31,7 @@ struct StickerTile: View {
                     .offset(x: 6, y: -6)
             }
         }
-        .onTapGesture(count: 2) {
+        .onLongPressGesture {
             if sticker.isCollected {
                 showingRemoveConfirmation = true
             }
