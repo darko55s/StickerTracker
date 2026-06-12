@@ -34,6 +34,9 @@ struct TradeView: View {
         }
     }
 
+    private var canGiveCount: Int { canGive.reduce(0) { $0 + $1.numbers.count } }
+    private var canReceiveCount: Int { canReceive.reduce(0) { $0 + $1.numbers.count } }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -51,7 +54,8 @@ struct TradeView: View {
                         } else {
                             let title = tradeMode == .friendMissing ? "You can give" : "You can get"
                             let color: Color = tradeMode == .friendMissing ? .green : .blue
-                            TradeSection(title: title, items: results, color: color)
+                            let count = tradeMode == .friendMissing ? canGiveCount : canReceiveCount
+                            TradeSection(title: title, count: count, items: results, color: color)
                         }
                     }
                 }
@@ -71,9 +75,10 @@ struct TradeView: View {
     private var pasteSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Picker("Mode", selection: $tradeMode) {
-                ForEach(TradeMode.allCases, id: \.self) { mode in
-                    Text(mode.rawValue).tag(mode)
-                }
+                Text(parsedStickers.isEmpty ? "Their missing" : "Their missing (\(canGiveCount))")
+                    .tag(TradeMode.friendMissing)
+                Text(parsedStickers.isEmpty ? "Their duplicates" : "Their duplicates (\(canReceiveCount))")
+                    .tag(TradeMode.friendDuplicates)
             }
             .pickerStyle(.segmented)
             .onChange(of: tradeMode) { pastedText = "" }
@@ -147,13 +152,20 @@ struct TradeView: View {
 
 private struct TradeSection: View {
     let title: String
+    let count: Int
     let items: [(team: Team, numbers: [Int])]
     let color: Color
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.headline)
+            HStack {
+                Text(title)
+                    .font(.headline)
+                Spacer()
+                Text("\(count) total")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(color)
+            }
             ForEach(items, id: \.team.id) { item in
                 HStack(alignment: .top, spacing: 10) {
                     Text(item.team.flagEmoji)
