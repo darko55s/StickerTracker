@@ -37,6 +37,14 @@ struct TradeView: View {
     private var canGiveCount: Int { canGive.reduce(0) { $0 + $1.numbers.count } }
     private var canReceiveCount: Int { canReceive.reduce(0) { $0 + $1.numbers.count } }
 
+    private var tradeShareText: String {
+        let results = tradeMode == .friendMissing ? canGive : canReceive
+        guard !results.isEmpty else { return "" }
+        let header = tradeMode == .friendMissing ? "You can give:" : "You can get:"
+        let lines = results.map { "\($0.team.flagEmoji) \($0.team.code): \($0.numbers.map(String.init).joined(separator: " "))" }
+        return ([header] + lines).joined(separator: "\n")
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -64,6 +72,12 @@ struct TradeView: View {
             .navigationTitle("Trade")
             .onTapGesture { isEditing = false }
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    ShareLink(item: tradeShareText) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .disabled(tradeShareText.isEmpty)
+                }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Done") { isEditing = false }
